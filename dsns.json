@@ -1,5 +1,0 @@
-{
-  "Billing_Core":  "postgresql+psycopg2://postgres:12345@127.0.0.1:5434/Billing_Core",
-  "crm_core":      "postgresql+psycopg2://postgres:12345@192.168.1.116:15432/crm_core",
-  "Projects_Core": "postgresql+psycopg2://postgres:12345@192.168.1.116:25432/Projects_Core"
-}
