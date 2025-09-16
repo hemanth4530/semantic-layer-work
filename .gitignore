@@ -1,0 +1,54 @@
+# -----------------
+# Python
+# -----------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Byte-compiled / optimized / DLL files
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# -----------------
+# Virtual environments
+# -----------------
+.venv/
+env/
+venv/
+
+# -----------------
+# Environment & secrets
+# -----------------
+.env
+*.env
+
+# -----------------
+# Data / catalog files
+# -----------------
+# Keep catalog_live.json (safe)
+# Ignore DSN configs (sensitive)
+data/dsns.json
+
+# Ignore any local SQLite/db artifacts
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+
+# -----------------
+# IDE/editor junk
+# -----------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# -----------------
+# Logs
+# -----------------
+*.log
+logs/

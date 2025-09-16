@@ -1,0 +1,17 @@
+# requirements.txt for semantic-demo project
+sqlalchemy>=1.4
+fastapi
+uvicorn
+jinja2
+requests
+pydantic
+python-dotenv
+streamlit
+# For LLM/AI integration (if used)
+openai
+# For database drivers (uncomment as needed)
+# psycopg2-binary  # For PostgreSQL
+# sqlite3 is included with Python stdlib
+python-dotenv
+duckdb
+pandas
