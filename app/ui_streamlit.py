@@ -4,11 +4,10 @@ import os, json, pathlib, streamlit as st
 from typing import Dict, Any, List
 from exec_sql import exec_sql
 from typing import Dict, Any
-from llm_planner import plan as llm_plan, llm_generate_final_sql
-
+from llm_planner import plan, llm_generate_final_sql
 def handle_query(nl_query: str, catalog_by_db: Dict[str, Any]) -> Dict[str, Any]:
     """Thin wrapper so ask.py / UI both call the same entrypoint."""
-    return llm_plan(nl_query, catalog_by_db)
+    return plan(nl_query, catalog_by_db)
 
 
 
@@ -93,4 +92,4 @@ if st.button("Run"):
             st.code(sql_used, language="sql")
             st.dataframe(df_result.head(200), use_container_width=True)
         except Exception as e:
-            st.error(f"[error] LLM final SQL failed: {e}")
+            st.info(f"⚠️ The system couldn’t generate a final SQL for this request. Reason: {e}")

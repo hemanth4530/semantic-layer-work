@@ -44,6 +44,7 @@ def llm_generate_final_sql(nl_query: str, per_db_results: dict, openai_api_key: 
         "temperature": 0.1,
     }
     r = requests.post(llm_endpoint, headers=headers, json=payload, timeout=60)
+    print("LLM response status:", r.status_code, r.text)
     r.raise_for_status()
     data = r.json()
     sql = data["choices"][0]["message"]["content"].strip()
@@ -55,6 +56,7 @@ def llm_generate_final_sql(nl_query: str, per_db_results: dict, openai_api_key: 
     for db_id, df in per_db_results.items():
         con.register(db_id, df)
     try:
+        print("Executing final SQL in DuckDB:", sql)
         result_df = con.execute(sql).df()
     except Exception as e:
         raise RuntimeError(f"DuckDB SQL execution failed: {e}\nSQL: {sql}")
@@ -67,24 +69,71 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 OPENAI_MODEL   = os.getenv("OPENAI_MODEL", "gpt-4o").strip()
 LLM_ENDPOINT   = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1/chat/completions").strip()
 
-SYSTEM = """You are a SQL planning assistant for a multi-DB semantic layer.
+SYSTEM = """
+You are a SQL planning assistant for a multi-DB semantic layer.
 
-Input: a natural language request and a JSON catalog (DBs → tables → columns).
+Input:
+- A natural language request.
+- A JSON catalog: { db_id -> { tables -> { columns } } }.
+
 Output: ONE JSON object:
 {
   "per_db_sql": [ { "db_id":"...", "sql":"...", "purpose":"..." } ],
-  "final_sql": "..."
+  "final_sql": "..."   # display-only, gives LLM context, never executed
 }
 
-Rules:
-- For each per_db_sql item, the SQL must reference ONLY tables present in that DB's catalog (no cross-DB references).
-- Push all filters (dates, thresholds, NOT/exclude) into the relevant per_db_sql.
-- final_sql is DISPLAY-ONLY to show the logical join across the chosen per-DB results; do NOT cross-execute. It may alias subqueries.
-- When combining results logically, infer join keys and filter columns by analyzing the catalog metadata and the user's request. Prefer keys and columns that are common between relevant tables and are most likely to represent entity relationships (such as customer, project, or invoice identifiers), based on the catalog structure and column names.
-- Never invent tables or columns. Use only columns present in the catalog.
-- Use Postgres syntax; keep it conservative and append LIMIT 10000 to each per-db query.
-- For NOT/EXCEPT logic, prefer <> for inequality and anti-joins (LEFT JOIN ... WHERE right.key IS NULL) where appropriate.
+GLOBAL CONSTRAINTS
+- Use only tables and columns that exist in the provided catalog. Never invent names.
+- Each per_db_sql must query inside a single DB only (no cross-DB joins).
+- Use conservative Postgres SQL syntax.
+- Returning zero rows is allowed; do not fabricate rows in SQL.
+- Do not COALESCE NULLs unless explicitly asked; show absence as NULL.
+- Never filter out rows with NULL values unless the user explicitly asks.
+
+PER-DB SQL (SOURCE QUERIES)
+- Push all filters (dates, thresholds, equality/inequality, NOT/exclude) into the relevant per_db_sql.
+- Separate driving entities from measures (SUM/COUNT/AVG).
+- Compute measures inside the per_db_sql and final_sql.
+- Project all columns needed later (keys, labels, measures) even if they return NULL.
+- Prefer simple SELECTs with explicit column lists and append LIMIT 10000.
+- Never cross-reference other DBs in a per_db_sql.
+
+NEGATIVE / ABSENCE LOGIC
+- Interpret negative phrases (NOT, NO, DOES NOT EXIST, DO NOT HAVE, WITHOUT, MISSING, INVALID) as:
+  • “no related rows” → anti-join:
+      LEFT JOIN child ON keys …
+      WHERE child.key IS NULL
+    or: WHERE NOT EXISTS (SELECT 1 FROM child WHERE …)
+  • “field is missing” → column IS NULL
+  • “not equal to X” → col <> 'X'
+      If “not equal OR missing” is clearly implied → (col IS NULL OR col <> 'X')
+  • “not in list” → col NOT IN (…)
+      If “not in OR missing” is implied → (col IS NULL OR col NOT IN (…))
+
+SCHEMA COMPLETENESS FOR NEGATIVES
+- If the user requests fields from an entity that may be absent, still include those fields in output by projecting them from the RIGHT side of a LEFT JOIN so they show up as NULL when unmatched.
+- If a requested field can only be shown as absent, project an explicit NULL of the correct type, e.g. CAST(NULL AS numeric) AS amount_paid or CAST(NULL AS text) AS po_number.
+- Never drop NULL rows by accident. Always preserve NULL unless explicitly told otherwise.
+- If a filter must apply in final_sql, ensure that column is selected upstream in per_db_sql.
+- Never reference columns in final_sql that were not selected upstream.
+
+JOIN KEYS & MERGE LOGIC
+- Infer join keys only from catalog metadata and column names common across tables. Never invent keys.
+- Always preserve rows from the driving entity when merging (use LEFT JOINs so non-matches remain visible as NULL).
+
+FUZZY / SEMANTIC COLUMN & TABLE MATCHING
+- If the user provides a name or phrase, and no exact match exists in the catalog, map it to the most semantically similar column/table name available in the catalog.
+- If no highly similar relation can be determined, do not guess. Instead, generate an explicit error message in the output indicating the missing or unmatched field.
+
+QUALITY
+- Keep syntax conservative and portable (avoid vendor-specific functions beyond standard Postgres).
+- When matching literal text and case-insensitive intent is implied, prefer LOWER(col) = LOWER('value').
+
+If something cannot be satisfied due to missing tables/columns in the catalog, still return a best-effort plan that respects all rules above and avoids invented schema.
 """
+
+
+
 
 USER_TEMPLATE = """Natural language:
 {nl}
