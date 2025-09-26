@@ -1,14 +1,12 @@
-import pandas as pd
-import duckdb
-def llm_generate_final_sql(nl_query: str, per_db_results: dict, openai_api_key: str = None, openai_model: str = None, llm_endpoint: str = None) -> dict:
+def llm_generate_final_sql(nl_query: str, per_db_metadata: dict, openai_api_key: str = None, openai_model: str = None, llm_endpoint: str = None) -> dict:
     """
-    Given a natural language query and a dict of per-DB results (db_id -> DataFrame),
-    use the LLM to generate a SQL statement that joins/aggregates these tables,
-    then execute it in DuckDB and return the result as a DataFrame and the SQL used.
+    Given a natural language query and per-DB metadata (db_id -> {"columns": ["col type", ...]}),
+    use the LLM to generate a single SQL statement that answers the request. This function
+    will NOT receive or send any row-level data (DataFrames) to the LLM — only metadata.
+
+    Returns: {"sql": "..."}
     """
     import json
-    import pandas as pd
-    import duckdb
     import os
     import requests
     import re
@@ -20,15 +18,67 @@ def llm_generate_final_sql(nl_query: str, per_db_results: dict, openai_api_key: 
     if not openai_api_key:
         raise RuntimeError("OPENAI_API_KEY not set.")
 
-    # Prepare table schemas for the LLM
+    # Build table schemas for the LLM from the metadata only
     table_schemas = {}
-    for db_id, df in per_db_results.items():
-        cols = [f"{c} {str(df[c].dtype)}" for c in df.columns]
+    for db_id, meta in (per_db_metadata or {}).items():
+        if isinstance(meta, dict) and "columns" in meta:
+            cols = meta["columns"]
+        else:
+            cols = []
         table_schemas[db_id] = {"columns": cols}
 
-    # Compose LLM prompt
-    SYSTEM = """You are a SQL assistant. Given a set of in-memory tables (from different DBs, now as DataFrames in DuckDB), and a natural language request, generate a single SQL statement to answer the request. Only use the provided table names and columns. Use DuckDB/Postgres SQL syntax. Do not invent columns. Assume all tables are loaded in DuckDB with table names as db_id. Return only the SQL string, nothing else."""
-    USER = f"""Natural language request:\n{nl_query}\n\nAvailable tables and columns:\n{json.dumps(table_schemas, indent=2)}\n\nWrite a SQL query that answers the request using these tables. Table names are the db_id keys above. Return only the SQL string."""
+    # Compose LLM prompt (metadata-only, type-aware)
+    SYSTEM = """You are a SQL assistant that MUST be type-aware. You will receive only table metadata (no row-level data).
+
+Before generating SQL, perform the following steps:
+1) Scan the provided metadata for every referenced table and column. Use the declared column types (name and type) to decide how to reference or convert columns.
+2) NEVER emit blind casts that assume textual values can be cast to numeric types. Instead use guarded patterns:
+   - Prefer TRY_CAST(col AS BIGINT) if available, otherwise
+   - Use CASE/regex guard: CASE WHEN col ~ '^\\d+$' THEN col::BIGINT ELSE NULL END
+   - Use NULLIF(col, '') to protect against empty strings before casting.
+3) If a join requires equating a textual key to a numeric key, prefer one of:
+   - Prefer textual equality if both sides are textual.
+   - Use a guarded cast on the textual side with regex guard.
+   - Use LEFT JOIN and preserve rows even when cast fails.
+4) When you do include any cast, include a short inline SQL comment explaining why and how it is safe (e.g. -- SAFE CAST: regex-guarded numeric conversion).
+
+Output rules:
+- Use only the table names and column names given in metadata. Do not invent columns.
+- Use DuckDB/Postgres-compatible SQL constructs. Avoid vendor-specific functions beyond standard Postgres/DuckDB.
+- Return only the SQL string as the assistant response (no surrounding markdown or explanation). If you must explain a casting decision, include a single inline SQL comment near the cast.
+- If a required mapping is ambiguous or unsafe, return a short SQL snippet that raises no errors (e.g., SELECT NULL WHERE FALSE) and include a one-line JSON-style error in a comment, or prefer to return an explicit JSON-error object instead of SQL.
+
+-- Column inclusion guarantee:
+- ALWAYS ensure the final SELECT explicitly includes every column the user requested in the natural-language request. If the requested column name is a natural-language phrase, map it to the exact column from the provided metadata and include it. If the column may not exist or is optional, project an explicit typed NULL (for example, CAST(NULL AS numeric) AS amount) so the output schema still contains the requested column name. Do not silently omit requested columns.
+"""
+
+    table_schemas_json = json.dumps(table_schemas, indent=2)
+
+    USER = f"""
+Natural language request:
+{nl_query}
+
+Available tables and columns (metadata only):
+{table_schemas_json}
+
+Instructions to the model:
+- Consider every column's declared type.
+- Prefer guarded casts (TRY_CAST or regex-guarded CASE) where conversions may be needed.
+- Preserve NULLs; do not fabricate rows.
+- Append LIMIT 10000 where appropriate for per-db extraction queries.
+
+Column-inclusion requirement:
+- The generated SQL MUST explicitly SELECT all columns that the user requested in the natural-language request. Do not omit any requested column even if it may be NULL for some rows.
+- If the user referenced a column by a natural-language phrase, map it to the exact column name from the provided metadata and include that column in the SELECT list.
+- If you must compute or rename a column to satisfy the user's requested label, alias the expression exactly to the requested label, e.g. "some_expr AS \"some_new_col_name\"" so the output column name matches the user's expectation.
+- If one or more requested columns are not present in the provided metadata/catalog, do NOT invent columns. Instead return a short JSON-like error object (as plain text) listing the missing column names and an explanation of why they are missing.
+
+Intersection semantics (default — common rows):
+- By default, when combining per-source results, RETURN ONLY rows that appear in every provided per-db table (the intersection of results). Treat intersection as the default merge behavior unless the user explicitly asks for "all rows", "union", "concat", "union all", or equivalent phrasing that requests rows from any source.
+- Prefer expressing the intersection via INNER JOINs on natural join keys (columns with identical names/meaning across sources) or, when schemas are identical, via INTERSECT of the per-source SELECTs. Do not use UNION/UNION ALL/LEFT JOIN if intersection is intended.
+
+Return a single SQL statement that answers the request using only the provided tables and columns. Return ONLY the SQL string; if you include any casts add a short inline comment explaining the cast. If you cannot safely produce SQL, return an explicit JSON-like error object (as plain text) explaining the type mismatch or missing columns.
+"""
 
     headers = {
         "Authorization": f"Bearer {openai_api_key}",
@@ -44,23 +94,15 @@ def llm_generate_final_sql(nl_query: str, per_db_results: dict, openai_api_key: 
         "temperature": 0.1,
     }
     r = requests.post(llm_endpoint, headers=headers, json=payload, timeout=60)
-    print("LLM response status:", r.status_code, r.text)
+    # Keep the response text for debugging but do not include any row-level data in the request.
+    print("LLM response status:", r.status_code)
     r.raise_for_status()
     data = r.json()
     sql = data["choices"][0]["message"]["content"].strip()
     # Clean up SQL (remove markdown, etc)
     sql = re.sub(r"^```sql|```$", "", sql, flags=re.I).strip()
 
-    # Load tables into DuckDB
-    con = duckdb.connect()
-    for db_id, df in per_db_results.items():
-        con.register(db_id, df)
-    try:
-        print("Executing final SQL in DuckDB:", sql)
-        result_df = con.execute(sql).df()
-    except Exception as e:
-        raise RuntimeError(f"DuckDB SQL execution failed: {e}\nSQL: {sql}")
-    return {"result": result_df, "sql": sql}
+    return {"sql": sql}
 # app/llm_planner.py
 import os, json, re, requests
 from typing import Dict, Any, List

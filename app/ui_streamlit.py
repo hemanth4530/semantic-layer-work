@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 from exec_sql import exec_sql
 from typing import Dict, Any
 from llm_planner import plan, llm_generate_final_sql
+import duckdb, pandas as pd
 def handle_query(nl_query: str, catalog_by_db: Dict[str, Any]) -> Dict[str, Any]:
     """Thin wrapper so ask.py / UI both call the same entrypoint."""
     return plan(nl_query, catalog_by_db)
@@ -78,18 +79,61 @@ if st.button("Run"):
                 exec_results.append({"db_id":db_id, "columns":res["columns"], "rows":res["rows"]})
 
         st.subheader("Final Output (LLM-generated SQL over in-memory tables)")
-        import pandas as pd
         per_db_dfs = {}
+
+        # Build and sanitize DataFrames for each DB
         for item in exec_results:
             db_id = item["db_id"]
             df = pd.DataFrame(item["rows"], columns=item["columns"])
+
+            # Sanitize common textual NULL sentinels
+            # df = df.replace({"NULL": None, "null": None, "(NULL)": None})
+
+            # Try to coerce object columns that look numeric into numeric dtype
+            # for c in df.columns:
+            #     if df[c].dtype == object:
+            #         coerced = pd.to_numeric(df[c], errors="coerce")
+            #         if coerced.notna().sum() > 0:
+            #             df[c] = coerced
+
             per_db_dfs[db_id] = df
-        try:
-            final_result = llm_generate_final_sql(query, per_db_dfs)
-            sql_used = final_result["sql"]
-            df_result = final_result["result"]
-            st.markdown("**LLM Final SQL Statement:**")
-            st.code(sql_used, language="sql")
-            st.dataframe(df_result.head(200), use_container_width=True)
-        except Exception as e:
-            st.info(f"⚠️ The system couldn’t generate a final SQL for this request. Reason: {e}")
+        print(f"PER DB DFS: {per_db_dfs}")
+
+        if not per_db_dfs:
+            st.info("No per-DB results available to generate a final SQL.")
+        else:
+            # Register DataFrames into DuckDB
+            con = duckdb.connect()
+            for db_id, df in per_db_dfs.items():
+                con.register(db_id, df)
+
+            # Derive metadata from DuckDB (preferred) with fallback to DataFrame dtypes
+            per_db_metadata = {}
+            for db_id in per_db_dfs.keys():
+                cols = []
+                try:
+                    info_df = con.execute(f"PRAGMA table_info('{db_id}')").df()
+                    if 'name' in info_df.columns and 'type' in info_df.columns:
+                        cols = [f"{row['name']} {row['type']}" for _, row in info_df.iterrows()]
+                    elif 'column_name' in info_df.columns and 'column_type' in info_df.columns:
+                        cols = [f"{row['column_name']} {row['column_type']}" for _, row in info_df.iterrows()]
+                    else:
+                        cols = [f"{c} {str(per_db_dfs[db_id][c].dtype)}" for c in per_db_dfs[db_id].columns]
+                except Exception:
+                    cols = [f"{c} {str(per_db_dfs[db_id][c].dtype)}" for c in per_db_dfs[db_id].columns]
+                per_db_metadata[db_id] = {"columns": cols}
+
+            # Call LLM with metadata-only and execute returned SQL locally
+            try:
+                final_plan = llm_generate_final_sql(query, per_db_metadata)
+                sql_used = final_plan.get("sql", "")
+                st.markdown("**LLM Final SQL Statement (generated using metadata only):**")
+                st.code(sql_used, language="sql")
+
+                try:
+                    df_result = con.execute(sql_used).df()
+                    st.dataframe(df_result.head(200), use_container_width=True)
+                except Exception as e:
+                    st.error(f"DuckDB execution failed: {e}")
+            except Exception as e:
+                st.error(f"Failed to generate final SQL from metadata: {e}")
