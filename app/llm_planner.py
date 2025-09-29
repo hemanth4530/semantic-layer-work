@@ -49,10 +49,10 @@ Output rules:
 - If a required mapping is ambiguous or unsafe, return a short SQL snippet that raises no errors (e.g., SELECT NULL WHERE FALSE) and include a one-line JSON-style error in a comment, or prefer to return an explicit JSON-error object instead of SQL.
 
 -- Column inclusion guarantee:
-- ALWAYS ensure the final SELECT explicitly includes every column the user requested in the natural-language request. If the requested column name is a natural-language phrase, map it to the exact column from the provided metadata and include it. If the column may not exist or is optional, project an explicit typed NULL (for example, CAST(NULL AS numeric) AS amount) so the output schema still contains the requested column name. Do not silently omit requested columns.
-"""
+- ALWAYS ensure the final SELECT includes every column in the per-db query's metadata."""
 
     table_schemas_json = json.dumps(table_schemas, indent=2)
+    print("TABLE SCHEMAS JSON:", table_schemas_json)
 
     USER = f"""
 Natural language request:
@@ -133,12 +133,14 @@ GLOBAL CONSTRAINTS
 - Never filter out rows with NULL values unless the user explicitly asks.
 
 PER-DB SQL (SOURCE QUERIES)
+- Always SELECT * in a table when querying that table.
 - Push all filters (dates, thresholds, equality/inequality, NOT/exclude) into the relevant per_db_sql.
 - Separate driving entities from measures (SUM/COUNT/AVG).
 - Compute measures inside the per_db_sql and final_sql.
 - Project all columns needed later (keys, labels, measures) even if they return NULL.
 - Prefer simple SELECTs with explicit column lists and append LIMIT 10000.
 - Never cross-reference other DBs in a per_db_sql.
+- Any column referenced in WHERE, JOIN, GROUP BY, HAVING, or ORDER BY in a per-db SQL must also be included in that per-db SQL's SELECT list if the column exists in the DB's metadata. Do not emit filters that reference columns without projecting them when those columns are available.
 
 NEGATIVE / ABSENCE LOGIC
 - Interpret negative phrases (NOT, NO, DOES NOT EXIST, DO NOT HAVE, WITHOUT, MISSING, INVALID) as:

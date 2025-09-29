@@ -74,8 +74,10 @@ if st.button("Run"):
             if res["error"]:
                 st.error(f"[{db_id}] {res['error']}")
             else:
-                st.caption(f"[{db_id}] {len(res['rows'])} rows")
-                st.dataframe(res["rows"], use_container_width=True)
+                # Always build a DataFrame with explicit columns so headers are preserved even when there are 0 rows
+                df = pd.DataFrame(res["rows"], columns=res["columns"])
+                st.caption(f"[{db_id}] {len(df)} rows")
+                st.dataframe(df, use_container_width=True)
                 exec_results.append({"db_id":db_id, "columns":res["columns"], "rows":res["rows"]})
 
         st.subheader("Final Output (LLM-generated SQL over in-memory tables)")
@@ -98,9 +100,20 @@ if st.button("Run"):
 
             per_db_dfs[db_id] = df
         print(f"PER DB DFS: {per_db_dfs}")
+        print("END PER DB DFS\n")
 
         if not per_db_dfs:
             st.info("No per-DB results available to generate a final SQL.")
+
+        # If only one DB produced results, use that DataFrame as the final result
+        elif len(per_db_dfs) == 1:
+            st.info("Only one DB returned results — using that source as the final output.")
+            # display the single DataFrame as the final result
+            single_db_id, single_df = next(iter(per_db_dfs.items()))
+            st.subheader(f"Final Output (from single source: {single_db_id})")
+            st.caption(f"[{single_db_id}] {len(single_df)} rows")
+            st.dataframe(single_df.head(200), use_container_width=True)
+
         else:
             # Register DataFrames into DuckDB
             con = duckdb.connect()
@@ -132,6 +145,32 @@ if st.button("Run"):
 
                 try:
                     df_result = con.execute(sql_used).df()
+                    print(f"FINAL RESULT DF: {df_result}")
+                    # If DuckDB returned no columns, derive column names from per-db DataFrame metadata
+                    if df_result is None:
+                        df_result = pd.DataFrame()
+                    if len(df_result.columns) == 0:
+                        # Try intersection of column names across per-db dfs (intersection is default merge behavior)
+                        try:
+                            all_cols = [list(d.columns) for d in per_db_dfs.values()]
+                            if all_cols:
+                                common = set(all_cols[0])
+                                for cols in all_cols[1:]:
+                                    common &= set(cols)
+                                if common:
+                                    df_result = pd.DataFrame(columns=list(common))
+                                else:
+                                    # fallback: union of all columns
+                                    union = []
+                                    for cols in all_cols:
+                                        for c in cols:
+                                            if c not in union:
+                                                union.append(c)
+                                    df_result = pd.DataFrame(columns=union)
+                            else:
+                                df_result = pd.DataFrame()
+                        except Exception:
+                            df_result = pd.DataFrame()
                     st.dataframe(df_result.head(200), use_container_width=True)
                 except Exception as e:
                     st.error(f"DuckDB execution failed: {e}")
