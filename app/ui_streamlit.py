@@ -6,6 +6,12 @@ from exec_sql import exec_sql
 from typing import Dict, Any
 from llm_planner import plan, llm_generate_final_sql
 import duckdb, pandas as pd
+from data_masking import (
+    mask_dataframe_for_display, 
+    get_role_permissions_summary,
+    get_masking_summary
+)
+from tag_loader import load_tag_mappings, load_masking_config
 def handle_query(nl_query: str, catalog_by_db: Dict[str, Any]) -> Dict[str, Any]:
     """Thin wrapper so ask.py / UI both call the same entrypoint."""
     return plan(nl_query, catalog_by_db)
@@ -38,10 +44,61 @@ def load_dsns(fp: str="dsns.json") -> Dict[str, str]:
 
 
 
-st.title("Semantic Layer (LLM-only)")
+st.title("Semantic Layer with Data Masking")
 
+# Sidebar: Configuration and Role Selection
+st.sidebar.header("Configuration")
 catalog_path = st.sidebar.text_input("Catalog JSON", "data/catalog_live.json")
-query        = st.text_input("Prompt", "top 3 clients by total invoice amount")
+
+st.sidebar.header("Role & Permissions")
+role = st.sidebar.selectbox(
+    "Select User Role", 
+    ["admin", "manager", "employee", "contractor", "intern", "finance_user"],
+    index=0
+)
+
+# Load masking configuration and show role permissions
+try:
+    config = load_masking_config()
+    tag_mappings = load_tag_mappings()
+    
+    if role != "admin":
+        permissions = get_role_permissions_summary(role, config)
+        st.sidebar.write(f"**{role.title()} Access:**")
+        st.sidebar.write(f"*{permissions.get('description', '')}*")
+        
+        sensitive_tags = set(permissions.get('blocked_tags', []) + permissions.get('anonymize_tags', []))
+        
+        if sensitive_tags:
+            st.sidebar.write("⭐ **Star-Masked Data:**")
+            st.sidebar.write("*Columns visible, sensitive values shown as stars*")
+            
+            # Combine descriptions from both blocked and anonymized tags
+            all_descriptions = permissions.get('blocked_descriptions', []) + permissions.get('anonymize_descriptions', [])
+            # Remove duplicates while preserving order
+            seen = set()
+            unique_descriptions = []
+            for desc in all_descriptions:
+                tag_name = desc.split(':')[0]
+                if tag_name not in seen:
+                    seen.add(tag_name)
+                    unique_descriptions.append(desc.split(':')[0] + ': ' + desc.split(':')[1].split('(')[0].strip())
+            
+            for desc in unique_descriptions:
+                st.sidebar.write(f"- {desc}")
+        else:
+            st.sidebar.write("✅ **Full access to all data**")
+    else:
+        st.sidebar.write("**👑 Administrator - Full Access**")
+        st.sidebar.write("*Can see all data without restrictions*")
+
+except Exception as e:
+    st.sidebar.error(f"Error loading masking config: {e}")
+    config = None
+    tag_mappings = None
+
+# Main query input
+query = st.text_input("Natural Language Query", "top 3 clients by total invoice amount")
 
 if st.button("Run"):
     try:
@@ -76,14 +133,41 @@ if st.button("Run"):
             else:
                 # Always build a DataFrame with explicit columns so headers are preserved even when there are 0 rows
                 df = pd.DataFrame(res["rows"], columns=res["columns"])
-                st.caption(f"[{db_id}] {len(df)} rows")
-                st.dataframe(df, use_container_width=True)
+                
+                # Apply role-based masking to per-DB results
+                if config and tag_mappings and role != "admin":
+                    masked_df, masking_indicators = mask_dataframe_for_display(
+                        df, db_id, None, role, tag_mappings, config
+                    )
+                    
+                    # Display with masking indicators
+                    st.caption(f"[{db_id}] {len(masked_df)} rows (Role: {role})")
+                    if masking_indicators:
+                        # Show masking summary
+                        summary = get_masking_summary(df.columns.tolist(), masked_df.columns.tolist(), masking_indicators)
+                        if summary['star_masked_columns'] > 0:
+                            st.caption(f"⭐ Data Masking Applied: {summary['star_masked_columns']} columns masked with stars")
+                    
+                    st.dataframe(masked_df, use_container_width=True)
+                    
+                    # Show masking details in expander
+                    if masking_indicators:
+                        with st.expander(f"Masking Details for {db_id}"):
+                            for col, indicator in masking_indicators.items():
+                                st.write(f"**{col}**: {indicator}")
+                else:
+                    # Admin or no masking config - show full data
+                    st.caption(f"[{db_id}] {len(df)} rows")
+                    st.dataframe(df, use_container_width=True)
+                
                 exec_results.append({"db_id":db_id, "columns":res["columns"], "rows":res["rows"]})
 
         st.subheader("Final Output (LLM-generated SQL over in-memory tables)")
         per_db_dfs = {}
 
         # Build and sanitize DataFrames for each DB
+        per_db_masking_info = {}  # Track masking applied to each DB
+        
         for item in exec_results:
             db_id = item["db_id"]
             df = pd.DataFrame(item["rows"], columns=item["columns"])
@@ -98,7 +182,19 @@ if st.button("Run"):
             #         if coerced.notna().sum() > 0:
             #             df[c] = coerced
 
-            per_db_dfs[db_id] = df
+            # Apply masking to per-DB DataFrames BEFORE DuckDB processing
+            # This ensures final results inherit the masking automatically
+            if config and tag_mappings and role != "admin":
+                masked_df, masking_indicators = mask_dataframe_for_display(
+                    df, db_id, None, role, tag_mappings, config
+                )
+                per_db_dfs[db_id] = masked_df
+                per_db_masking_info[db_id] = masking_indicators
+                print(f"Applied masking to {db_id}: {len(masking_indicators)} columns masked")
+            else:
+                per_db_dfs[db_id] = df
+                per_db_masking_info[db_id] = {}
+                
         print(f"PER DB DFS: {per_db_dfs}")
         print("END PER DB DFS\n")
 
@@ -111,7 +207,19 @@ if st.button("Run"):
             # display the single DataFrame as the final result
             single_db_id, single_df = next(iter(per_db_dfs.items()))
             st.subheader(f"Final Output (from single source: {single_db_id})")
+            
+            # DataFrame is already masked from per-DB processing, just display it
             st.caption(f"[{single_db_id}] {len(single_df)} rows")
+            if role != "admin" and single_db_id in per_db_masking_info and per_db_masking_info[single_db_id]:
+                masking_indicators = per_db_masking_info[single_db_id]
+                summary = get_masking_summary([], single_df.columns.tolist(), masking_indicators)
+                if summary['star_masked_columns'] > 0:
+                    st.caption(f"⭐ Final Result Masking: {summary['star_masked_columns']} columns masked with stars (Role: {role})")
+                
+                with st.expander("Final Result Masking Details"):
+                    for col, indicator in masking_indicators.items():
+                        st.write(f"**{col}**: {indicator}")
+            
             st.dataframe(single_df.head(200), use_container_width=True)
 
         else:
@@ -171,6 +279,21 @@ if st.button("Run"):
                                 df_result = pd.DataFrame()
                         except Exception:
                             df_result = pd.DataFrame()
+                    
+                    # Data is already masked from per-DB processing, just display it
+                    if role != "admin" and any(per_db_masking_info.values()):
+                        # Show masking summary from per-DB processing
+                        total_masked_columns = sum(len(indicators) for indicators in per_db_masking_info.values())
+                        if total_masked_columns > 0:
+                            st.caption(f"⭐ Final Combined Result: Data inherits masking from source databases (Role: {role})")
+                            
+                            with st.expander("Source Database Masking Details"):
+                                for db_id, indicators in per_db_masking_info.items():
+                                    if indicators:
+                                        st.write(f"**{db_id}:**")
+                                        for col, indicator in indicators.items():
+                                            st.write(f"  - {col}: {indicator}")
+                    
                     st.dataframe(df_result.head(200), use_container_width=True)
                 except Exception as e:
                     st.error(f"DuckDB execution failed: {e}")

@@ -1,0 +1,102 @@
+{
+  "tag_definitions": {
+    "financial": {
+      "description": "Financial amounts, pricing, billing data",
+      "sensitivity_level": 3,
+      "compliance": ["SOX", "PCI"]
+    },
+    "pii": {
+      "description": "Personally identifiable information",
+      "sensitivity_level": 4,
+      "compliance": ["GDPR", "CCPA"]
+    },
+    "contact_info": {
+      "description": "Contact details - emails, phones",
+      "sensitivity_level": 2,
+      "compliance": ["GDPR"]
+    },
+    "internal": {
+      "description": "Internal operations, employee data",
+      "sensitivity_level": 3,
+      "compliance": ["Internal Policy"]
+    },
+    "business_key": {
+      "description": "Business identifiers and codes",
+      "sensitivity_level": 1,
+      "compliance": []
+    },
+    "identifier": {
+      "description": "Primary keys and system identifiers",
+      "sensitivity_level": 0,
+      "compliance": []
+    },
+    "temporal": {
+      "description": "Date and time information",
+      "sensitivity_level": 1,
+      "compliance": []
+    },
+    "status_info": {
+      "description": "Status and metadata fields",
+      "sensitivity_level": 0,
+      "compliance": []
+    }
+  },
+  
+  "roles": {
+    "admin": {
+      "description": "Full system administrator with complete access",
+      "blocked_tags": [],
+      "allowed_exceptions": [],
+      "anonymize_tags": [],
+      "max_sensitivity_level": 4
+    },
+    "manager": {
+      "description": "Department manager with high-level access",
+      "blocked_tags": [],
+      "allowed_exceptions": [],
+      "anonymize_tags": ["pii"],
+      "max_sensitivity_level": 4
+    },
+    "employee": {
+      "description": "Regular employee with business access",
+      "blocked_tags": ["internal"],
+      "allowed_exceptions": [],
+      "anonymize_tags": ["pii", "contact_info"],
+      "max_sensitivity_level": 3
+    },
+    "contractor": {
+      "description": "External contractor with limited access",
+      "blocked_tags": ["internal"],
+      "allowed_exceptions": [],
+      "anonymize_tags": ["pii", "contact_info"],
+      "max_sensitivity_level": 2
+    },
+    "intern": {
+      "description": "Student intern with minimal access",
+      "blocked_tags": ["financial", "pii", "internal", "contact_info"],
+      "allowed_exceptions": ["business_key", "identifier"],
+      "anonymize_tags": [],
+      "max_sensitivity_level": 1
+    },
+    "finance_user": {
+      "description": "Finance department user with financial access",
+      "blocked_tags": ["internal"],
+      "allowed_exceptions": [],
+      "anonymize_tags": ["pii", "contact_info"],
+      "max_sensitivity_level": 3
+    }
+  },
+  
+  "anonymization_methods": {
+    "pii": "hash_value",
+    "contact_info": "mask_domain",
+    "financial": "range_bucket",
+    "internal": "redact"
+  },
+  
+  "field_exceptions": {
+    "intern": {
+      "allowed_fields": ["client_code", "project_code", "name", "status"]
+    }
+  }
+}
