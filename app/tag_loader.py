@@ -17,8 +17,58 @@ def load_json_with_encoding(file_path: str) -> Dict[str, Any]:
             continue
     raise ValueError(f"Failed to parse JSON '{file_path}'.")
 
-def load_tag_mappings(mappings_file: str = "field_tag_mappings.json") -> Dict[str, Any]:
-    """Load field tag mappings from JSON file"""
+def should_regenerate_mappings(
+    catalog_file: str = "data/catalog_live.json",
+    mappings_file: str = "field_tag_mappings.json"
+) -> bool:
+    """Check if field tag mappings should be regenerated"""
+    import os
+    
+    # If mappings file doesn't exist, need to generate
+    if not os.path.exists(mappings_file):
+        return True
+    
+    # If catalog doesn't exist, can't generate
+    if not os.path.exists(catalog_file):
+        return False
+    
+    # Check if catalog is newer than mappings
+    try:
+        catalog_time = os.path.getmtime(catalog_file)
+        mappings_time = os.path.getmtime(mappings_file)
+        return catalog_time > mappings_time
+    except OSError:
+        return True
+
+def load_tag_mappings(
+    mappings_file: str = "field_tag_mappings.json",
+    catalog_file: str = "data/catalog_live.json",
+    auto_generate: bool = True
+) -> Dict[str, Any]:
+    """Load field tag mappings from JSON file, auto-generating if needed"""
+    
+    # Check if we should auto-generate
+    if auto_generate and should_regenerate_mappings(catalog_file, mappings_file):
+        try:
+            print(f"🤖 Auto-generating field tag mappings...")
+            from auto_tag_generator import auto_generate_field_tag_mappings
+            
+            # Generate new mappings
+            generated_mappings = auto_generate_field_tag_mappings(
+                catalog_file=catalog_file,
+                output_file=mappings_file,
+                force_regenerate=True
+            )
+            print(f"✅ Field tag mappings auto-generated and saved to {mappings_file}")
+            return generated_mappings
+            
+        except ImportError:
+            print("⚠️  Auto-generation module not available, using existing or empty mappings")
+        except Exception as e:
+            print(f"⚠️  Auto-generation failed: {e}")
+            print("    Falling back to existing or empty mappings")
+    
+    # Load existing mappings or return empty
     try:
         return load_json_with_encoding(mappings_file)
     except FileNotFoundError:

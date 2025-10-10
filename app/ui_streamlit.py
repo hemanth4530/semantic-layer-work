@@ -2,6 +2,7 @@
 
 import os, json, pathlib, streamlit as st
 from typing import Dict, Any, List
+from dotenv import load_dotenv
 from exec_sql import exec_sql
 from typing import Dict, Any
 from llm_planner import plan, llm_generate_final_sql
@@ -12,6 +13,9 @@ from data_masking import (
     get_masking_summary
 )
 from tag_loader import load_tag_mappings, load_masking_config
+
+# Load environment variables from .env file
+load_dotenv()
 def handle_query(nl_query: str, catalog_by_db: Dict[str, Any]) -> Dict[str, Any]:
     """Thin wrapper so ask.py / UI both call the same entrypoint."""
     return plan(nl_query, catalog_by_db)
@@ -50,17 +54,22 @@ st.title("Semantic Layer with Data Masking")
 st.sidebar.header("Configuration")
 catalog_path = st.sidebar.text_input("Catalog JSON", "data/catalog_live.json")
 
+
+
 st.sidebar.header("Role & Permissions")
 role = st.sidebar.selectbox(
     "Select User Role", 
-    ["admin", "manager", "employee", "contractor", "intern", "finance_user"],
+    ["admin", "manager", "employee", "intern"],
     index=0
 )
 
 # Load masking configuration and show role permissions
 try:
     config = load_masking_config()
-    tag_mappings = load_tag_mappings()
+    
+    # Auto-generate field tag mappings if needed (when catalog is newer)
+    with st.spinner("🔍 Checking field tag mappings..."):
+        tag_mappings = load_tag_mappings(catalog_file=catalog_path, auto_generate=True)
     
     if role != "admin":
         permissions = get_role_permissions_summary(role, config)
@@ -70,7 +79,7 @@ try:
         sensitive_tags = set(permissions.get('blocked_tags', []) + permissions.get('anonymize_tags', []))
         
         if sensitive_tags:
-            st.sidebar.write("⭐ **Star-Masked Data:**")
+            st.sidebar.write("⭐ **Masked Data:**")
             st.sidebar.write("*Columns visible, sensitive values shown as stars*")
             
             # Combine descriptions from both blocked and anonymized tags

@@ -1,44 +1,94 @@
 {
   "tag_definitions": {
     "financial": {
-      "description": "Financial amounts, pricing, billing data",
+      "description": "Financial amounts, pricing, billing data including money, costs, salaries, payments",
       "sensitivity_level": 3,
-      "compliance": ["SOX", "PCI"]
+      "compliance": ["SOX", "PCI"],
+      "examples": ["amount", "price", "cost", "salary", "payment", "total", "subtotal", "tax", "fee", "revenue", "expense"]
     },
     "pii": {
-      "description": "Personally identifiable information",
+      "description": "Personally identifiable information that can identify specific individuals",
       "sensitivity_level": 4,
-      "compliance": ["GDPR", "CCPA"]
+      "compliance": ["GDPR", "CCPA"],
+      "examples": ["email", "phone", "name", "first_name", "last_name", "ssn", "address", "birthday", "license"]
     },
     "contact_info": {
-      "description": "Contact details - emails, phones",
+      "description": "Contact details like emails, phones, addresses for communication",
       "sensitivity_level": 2,
-      "compliance": ["GDPR"]
+      "compliance": ["GDPR"],
+      "examples": ["email", "phone", "address", "contact", "billing_email", "primary_contact"]
     },
     "internal": {
-      "description": "Internal operations, employee data",
+      "description": "Internal operations, employee data, private business information",
       "sensitivity_level": 3,
-      "compliance": ["Internal Policy"]
+      "compliance": ["Internal Policy"],
+      "examples": ["worker_email", "assignee", "notes", "internal", "employee", "hours", "estimate_hrs"]
     },
     "business_key": {
-      "description": "Business identifiers and codes",
+      "description": "Business identifiers, codes, and reference numbers",
       "sensitivity_level": 1,
-      "compliance": []
+      "compliance": [],
+      "examples": ["code", "number", "reference", "po_number", "client_code", "project_code"]
     },
     "identifier": {
-      "description": "Primary keys and system identifiers",
+      "description": "Primary keys, foreign keys, and system identifiers",
       "sensitivity_level": 0,
-      "compliance": []
+      "compliance": [],
+      "examples": ["id", "_id", "key", "pk", "invoice_id", "client_id", "project_id"]
     },
     "temporal": {
-      "description": "Date and time information",
+      "description": "Date and time information, timestamps",
       "sensitivity_level": 1,
-      "compliance": []
+      "compliance": [],
+      "examples": ["date", "time", "created", "updated", "start_date", "end_date", "issue_date", "due_date"]
     },
     "status_info": {
-      "description": "Status and metadata fields",
+      "description": "Status flags, metadata, and operational state information",
       "sensitivity_level": 0,
-      "compliance": []
+      "compliance": [],
+      "examples": ["status", "active", "enabled", "is_active", "is_primary", "currency", "method"]
+    },
+    "highly_sensitive": {
+      "description": "Highly sensitive information requiring maximum protection",
+      "sensitivity_level": 5,
+      "compliance": ["GDPR", "PCI", "SOX"],
+      "examples": ["payment_method", "payment_reference", "bank_account", "credit_card", "sensitive_financial"]
+    },
+    "billing": {
+      "description": "Billing and invoicing related data",
+      "sensitivity_level": 2,
+      "compliance": ["SOX"],
+      "examples": ["invoice", "billing", "charges", "fees", "billing_cycle"]
+    },
+    "customer_data": {
+      "description": "Customer information and profiles",
+      "sensitivity_level": 3,
+      "compliance": ["GDPR", "CCPA"],
+      "examples": ["client", "customer", "account_holder", "subscriber"]
+    },
+    "contact_data": {
+      "description": "Contact and communication information",
+      "sensitivity_level": 2,
+      "compliance": ["GDPR"],
+      "examples": ["contact", "communication", "address_book", "directory"]
+    },
+    "project_data": {
+      "description": "Project management and tracking information",
+      "sensitivity_level": 1,
+      "compliance": [],
+      "examples": ["project", "task", "phase", "milestone", "deliverable"]
+    },
+    "operational": {
+      "description": "Day-to-day operational data and metrics",
+      "sensitivity_level": 2,
+      "compliance": ["Internal Policy"],
+      "examples": ["operations", "workflow", "process", "activity", "tracking"]
+    },
+    "reference_data": {
+      "description": "Reference and lookup tables, master data",
+      "sensitivity_level": 0,
+      "compliance": [],
+      "examples": ["lookup", "reference", "master", "category", "type", "industry"]
     }
   },
   
@@ -59,21 +109,21 @@
     },
     "employee": {
       "description": "Regular employee with business access",
-      "blocked_tags": ["internal"],
+      "blocked_tags": ["internal", "highly_sensitive"],
       "allowed_exceptions": [],
       "anonymize_tags": ["pii", "contact_info"],
       "max_sensitivity_level": 3
     },
     "contractor": {
       "description": "External contractor with limited access",
-      "blocked_tags": ["internal"],
+      "blocked_tags": ["internal", "highly_sensitive"],
       "allowed_exceptions": [],
-      "anonymize_tags": ["pii", "contact_info"],
+      "anonymize_tags": ["pii", "contact_info", "customer_data"],
       "max_sensitivity_level": 2
     },
     "intern": {
       "description": "Student intern with minimal access",
-      "blocked_tags": ["financial", "pii", "internal", "contact_info"],
+      "blocked_tags": ["financial", "pii", "internal", "contact_info", "highly_sensitive", "customer_data"],
       "allowed_exceptions": ["business_key", "identifier"],
       "anonymize_tags": [],
       "max_sensitivity_level": 1
@@ -89,9 +139,12 @@
   
   "anonymization_methods": {
     "pii": "hash_value",
-    "contact_info": "mask_domain",
-    "financial": "range_bucket",
-    "internal": "redact"
+    "contact_info": "mask_domain", 
+    "financial": "star_mask",
+    "internal": "star_mask",
+    "highly_sensitive": "star_mask",
+    "customer_data": "star_mask",
+    "contact_data": "star_mask"
   },
   
   "field_exceptions": {
