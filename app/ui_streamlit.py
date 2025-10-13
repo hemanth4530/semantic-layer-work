@@ -127,7 +127,18 @@ st.markdown("""
 
 # Sidebar: Configuration and Role Selection
 st.sidebar.header("Configuration")
-catalog_path = st.sidebar.text_input("Catalog JSON", "data/catalog_live.json")
+
+# Catalog viewer button instead of text input
+catalog_path = "data/catalog_live.json"  # Fixed path
+if st.sidebar.button("📋 View Catalog File"):
+    try:
+        catalog_data = load_json(catalog_path)
+        with st.sidebar.expander("📊 Catalog Contents", expanded=True):
+            st.json(catalog_data)
+    except Exception as e:
+        st.sidebar.error(f"Error loading catalog: {e}")
+
+st.sidebar.write(f"**Using:** `{catalog_path}`")
 
 
 
