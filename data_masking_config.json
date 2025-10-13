@@ -93,43 +93,43 @@
   },
   
   "roles": {
-    "admin": {
+    "Admin": {
       "description": "Full system administrator with complete access",
       "blocked_tags": [],
       "allowed_exceptions": [],
       "anonymize_tags": [],
       "max_sensitivity_level": 4
     },
-    "manager": {
-      "description": "Department manager with high-level access",
+    "Manager": {
+      "description": "Department manager with high-level access. PII information will be masked.",
       "blocked_tags": [],
       "allowed_exceptions": [],
       "anonymize_tags": ["pii"],
       "max_sensitivity_level": 4
     },
-    "employee": {
-      "description": "Regular employee with business access",
+    "Employee": {
+      "description": "Regular employee with business access. PII and contact information will be masked.",
       "blocked_tags": ["internal", "highly_sensitive"],
       "allowed_exceptions": [],
       "anonymize_tags": ["pii", "contact_info"],
       "max_sensitivity_level": 3
     },
-    "contractor": {
-      "description": "External contractor with limited access",
+    "Contractor": {
+      "description": "External contractor with limited access. PII, contact information, and customer data will be masked.",
       "blocked_tags": ["internal", "highly_sensitive"],
       "allowed_exceptions": [],
       "anonymize_tags": ["pii", "contact_info", "customer_data"],
       "max_sensitivity_level": 2
     },
-    "intern": {
-      "description": "Student intern with minimal access",
+    "Intern": {
+      "description": "Student intern with minimal access. PII, contact information, and customer data will be masked except for business keys and identifiers.",
       "blocked_tags": ["financial", "pii", "internal", "contact_info", "highly_sensitive", "customer_data"],
       "allowed_exceptions": ["business_key", "identifier"],
       "anonymize_tags": [],
       "max_sensitivity_level": 1
     },
-    "finance_user": {
-      "description": "Finance department user with financial access",
+    "Finance_user": {
+      "description": "Finance department user with financial access. Fields tagged as 'pii' and 'contact_info' will be anonymized.",
       "blocked_tags": ["internal"],
       "allowed_exceptions": [],
       "anonymize_tags": ["pii", "contact_info"],

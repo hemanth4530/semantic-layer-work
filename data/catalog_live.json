@@ -8,43 +8,35 @@
         "columns": [
           {
             "name": "estimate_id",
-            "type": "integer",
-            "description": "Unique identifier for each estimate record."
+            "type": "integer"
           },
           {
             "name": "estimate_number",
-            "type": "character varying",
-            "description": "Unique number assigned to each estimate for tracking purposes."
+            "type": "character varying"
           },
           {
             "name": "client_code",
-            "type": "character varying",
-            "description": "Code identifying the client associated with the estimate."
+            "type": "character varying"
           },
           {
             "name": "project_code",
-            "type": "character varying",
-            "description": "Code identifying the project related to the estimate."
+            "type": "character varying"
           },
           {
             "name": "issue_date",
-            "type": "date",
-            "description": "Date when the estimate was issued to the client."
+            "type": "date"
           },
           {
             "name": "currency",
-            "type": "character",
-            "description": "Currency in which the estimate amounts are denominated."
+            "type": "character"
           },
           {
             "name": "total_amount",
-            "type": "numeric",
-            "description": "Total monetary value of the estimate."
+            "type": "numeric"
           },
           {
             "name": "status",
-            "type": "character varying",
-            "description": "Current status of the estimate, indicating its progress or approval state."
+            "type": "character varying"
           }
         ]
       },
@@ -54,33 +46,27 @@
         "columns": [
           {
             "name": "invoice_line_id",
-            "type": "integer",
-            "description": "Unique identifier for each line item in an invoice."
+            "type": "integer"
           },
           {
             "name": "invoice_id",
-            "type": "integer",
-            "description": "Identifier linking the line item to its parent invoice."
+            "type": "integer"
           },
           {
             "name": "line_no",
-            "type": "integer",
-            "description": "Sequential number indicating the order of the line item in the invoice."
+            "type": "integer"
           },
           {
             "name": "description",
-            "type": "character varying",
-            "description": "Textual description of the goods or services billed in the line item."
+            "type": "character varying"
           },
           {
             "name": "qty",
-            "type": "numeric",
-            "description": "Quantity of items or services billed in the line item."
+            "type": "numeric"
           },
           {
             "name": "unit_price",
-            "type": "numeric",
-            "description": "Price per unit of the item or service in the line item."
+            "type": "numeric"
           }
         ]
       },
@@ -90,63 +76,51 @@
         "columns": [
           {
             "name": "invoice_id",
-            "type": "integer",
-            "description": "Unique identifier for each invoice record."
+            "type": "integer"
           },
           {
             "name": "invoice_number",
-            "type": "character varying",
-            "description": "Unique number assigned to each invoice for tracking purposes."
+            "type": "character varying"
           },
           {
             "name": "client_code",
-            "type": "character varying",
-            "description": "Code identifying the client associated with the invoice."
+            "type": "character varying"
           },
           {
             "name": "project_code",
-            "type": "character varying",
-            "description": "Code identifying the project related to the invoice."
+            "type": "character varying"
           },
           {
             "name": "po_number",
-            "type": "character varying",
-            "description": "Purchase order number associated with the invoice."
+            "type": "character varying"
           },
           {
             "name": "issue_date",
-            "type": "date",
-            "description": "Date when the invoice was issued to the client."
+            "type": "date"
           },
           {
             "name": "due_date",
-            "type": "date",
-            "description": "Date by which the invoice payment is due."
+            "type": "date"
           },
           {
             "name": "currency",
-            "type": "character",
-            "description": "Currency in which the invoice amounts are denominated."
+            "type": "character"
           },
           {
             "name": "subtotal_amount",
-            "type": "numeric",
-            "description": "Total amount before taxes and additional charges."
+            "type": "numeric"
           },
           {
             "name": "tax_amount",
-            "type": "numeric",
-            "description": "Total tax amount applied to the invoice."
+            "type": "numeric"
           },
           {
             "name": "total_amount",
-            "type": "numeric",
-            "description": "Total monetary value of the invoice including taxes."
+            "type": "numeric"
           },
           {
             "name": "status",
-            "type": "character varying",
-            "description": "Current status of the invoice, indicating its payment or approval state."
+            "type": "character varying"
           }
         ]
       },
@@ -156,33 +130,27 @@
         "columns": [
           {
             "name": "payment_id",
-            "type": "integer",
-            "description": "Unique identifier for each payment record."
+            "type": "integer"
           },
           {
             "name": "invoice_number",
-            "type": "character varying",
-            "description": "Number of the invoice to which the payment is applied."
+            "type": "character varying"
           },
           {
             "name": "payment_date",
-            "type": "date",
-            "description": "Date when the payment was received."
+            "type": "date"
           },
           {
             "name": "method",
-            "type": "character varying",
-            "description": "Method used for the payment, such as credit card or bank transfer."
+            "type": "character varying"
           },
           {
             "name": "amount",
-            "type": "numeric",
-            "description": "Monetary amount of the payment received."
+            "type": "numeric"
           },
           {
             "name": "reference",
-            "type": "character varying",
-            "description": "Reference information for tracking the payment."
+            "type": "character varying"
           }
         ]
       }
@@ -197,13 +165,11 @@
         "columns": [
           {
             "name": "client_id",
-            "type": "integer",
-            "description": "Identifier linking the client to their industry."
+            "type": "integer"
           },
           {
             "name": "industry_id",
-            "type": "integer",
-            "description": "Identifier linking the industry to the client."
+            "type": "integer"
           }
         ]
       },
@@ -213,33 +179,27 @@
         "columns": [
           {
             "name": "client_id",
-            "type": "integer",
-            "description": "Unique identifier for each client record."
+            "type": "integer"
           },
           {
             "name": "client_code",
-            "type": "character varying",
-            "description": "Unique code assigned to each client for identification."
+            "type": "character varying"
           },
           {
             "name": "name",
-            "type": "character varying",
-            "description": "Full name of the client or client organization."
+            "type": "character varying"
           },
           {
             "name": "billing_email",
-            "type": "character varying",
-            "description": "Email address used for sending billing information to the client."
+            "type": "character varying"
           },
           {
             "name": "phone",
-            "type": "character varying",
-            "description": "Primary contact phone number for the client."
+            "type": "character varying"
           },
           {
             "name": "is_active",
-            "type": "boolean",
-            "description": "Indicates whether the client is currently active."
+            "type": "boolean"
           }
         ]
       },
@@ -249,43 +209,35 @@
         "columns": [
           {
             "name": "contact_id",
-            "type": "integer",
-            "description": "Unique identifier for each contact record."
+            "type": "integer"
           },
           {
             "name": "client_id",
-            "type": "integer",
-            "description": "Identifier linking the contact to their associated client."
+            "type": "integer"
           },
           {
             "name": "contact_email",
-            "type": "character varying",
-            "description": "Email address of the contact person."
+            "type": "character varying"
           },
           {
             "name": "first_name",
-            "type": "character varying",
-            "description": "First name of the contact person."
+            "type": "character varying"
           },
           {
             "name": "last_name",
-            "type": "character varying",
-            "description": "Last name of the contact person."
+            "type": "character varying"
           },
           {
             "name": "title",
-            "type": "character varying",
-            "description": "Job title or position of the contact person."
+            "type": "character varying"
           },
           {
             "name": "phone",
-            "type": "character varying",
-            "description": "Contact phone number for the contact person."
+            "type": "character varying"
           },
           {
             "name": "is_primary",
-            "type": "boolean",
-            "description": "Indicates if the contact is the primary contact for the client."
+            "type": "boolean"
           }
         ]
       },
@@ -295,18 +247,15 @@
         "columns": [
           {
             "name": "industry_id",
-            "type": "integer",
-            "description": "Unique identifier for each industry record."
+            "type": "integer"
           },
           {
             "name": "code",
-            "type": "character varying",
-            "description": "Code representing the industry category."
+            "type": "character varying"
           },
           {
             "name": "name",
-            "type": "character varying",
-            "description": "Name of the industry category."
+            "type": "character varying"
           }
         ]
       }
@@ -321,23 +270,19 @@
         "columns": [
           {
             "name": "phase_id",
-            "type": "integer",
-            "description": "Unique identifier for each project phase."
+            "type": "integer"
           },
           {
             "name": "project_id",
-            "type": "integer",
-            "description": "Identifier linking the phase to its parent project."
+            "type": "integer"
           },
           {
             "name": "phase_code",
-            "type": "character varying",
-            "description": "Code representing the specific phase of a project."
+            "type": "character varying"
           },
           {
             "name": "name",
-            "type": "character varying",
-            "description": "Name of the project phase."
+            "type": "character varying"
           }
         ]
       },
@@ -347,18 +292,15 @@
         "columns": [
           {
             "name": "ppo_id",
-            "type": "integer",
-            "description": "Unique identifier for each project purchase order."
+            "type": "integer"
           },
           {
             "name": "project_id",
-            "type": "integer",
-            "description": "Identifier linking the purchase order to its associated project."
+            "type": "integer"
           },
           {
             "name": "po_number",
-            "type": "character varying",
-            "description": "Purchase order number associated with the project."
+            "type": "character varying"
           }
         ]
       },
@@ -368,43 +310,35 @@
         "columns": [
           {
             "name": "project_id",
-            "type": "integer",
-            "description": "Unique identifier for each project record."
+            "type": "integer"
           },
           {
             "name": "project_code",
-            "type": "character varying",
-            "description": "Unique code assigned to each project for identification."
+            "type": "character varying"
           },
           {
             "name": "name",
-            "type": "character varying",
-            "description": "Name of the project."
+            "type": "character varying"
           },
           {
             "name": "client_code",
-            "type": "character varying",
-            "description": "Code identifying the client associated with the project."
+            "type": "character varying"
           },
           {
             "name": "primary_contact_email",
-            "type": "character varying",
-            "description": "Email address of the primary contact for the project."
+            "type": "character varying"
           },
           {
             "name": "status",
-            "type": "character varying",
-            "description": "Current status of the project, indicating its progress or completion state."
+            "type": "character varying"
           },
           {
             "name": "start_date",
-            "type": "date",
-            "description": "Date when the project is scheduled to start."
+            "type": "date"
           },
           {
             "name": "end_date",
-            "type": "date",
-            "description": "Date when the project is scheduled to end."
+            "type": "date"
           }
         ]
       },
@@ -414,38 +348,31 @@
         "columns": [
           {
             "name": "task_id",
-            "type": "integer",
-            "description": "Unique identifier for each task within a project."
+            "type": "integer"
           },
           {
             "name": "project_id",
-            "type": "integer",
-            "description": "Identifier linking the task to its parent project."
+            "type": "integer"
           },
           {
             "name": "phase_id",
-            "type": "integer",
-            "description": "Identifier linking the task to its associated project phase."
+            "type": "integer"
           },
           {
             "name": "title",
-            "type": "character varying",
-            "description": "Title or name of the task."
+            "type": "character varying"
           },
           {
             "name": "assignee",
-            "type": "character varying",
-            "description": "Person responsible for completing the task."
+            "type": "character varying"
           },
           {
             "name": "status",
-            "type": "character varying",
-            "description": "Current status of the task, indicating its progress or completion state."
+            "type": "character varying"
           },
           {
             "name": "estimate_hrs",
-            "type": "numeric",
-            "description": "Estimated number of hours required to complete the task."
+            "type": "numeric"
           }
         ]
       },
@@ -455,38 +382,31 @@
         "columns": [
           {
             "name": "time_entry_id",
-            "type": "integer",
-            "description": "Unique identifier for each time entry record."
+            "type": "integer"
           },
           {
             "name": "project_id",
-            "type": "integer",
-            "description": "Identifier linking the time entry to its associated project."
+            "type": "integer"
           },
           {
             "name": "task_id",
-            "type": "integer",
-            "description": "Identifier linking the time entry to its associated task."
+            "type": "integer"
           },
           {
             "name": "work_date",
-            "type": "date",
-            "description": "Date when the work was performed."
+            "type": "date"
           },
           {
             "name": "worker_email",
-            "type": "character varying",
-            "description": "Email address of the worker who logged the time."
+            "type": "character varying"
           },
           {
             "name": "hours",
-            "type": "numeric",
-            "description": "Number of hours worked as recorded in the time entry."
+            "type": "numeric"
           },
           {
             "name": "notes",
-            "type": "character varying",
-            "description": "Additional notes or comments about the time entry."
+            "type": "character varying"
           }
         ]
       }

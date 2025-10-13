@@ -72,7 +72,7 @@ def check_role_access(role: str, field_tags: List[str], config: Dict[str, Any]) 
     return True, False
 
 def should_mask_field_with_stars(role: str, field_tags: List[str], config: Dict[str, Any]) -> bool:
-    """Check if field should be masked with stars for this role"""
+    """Check if field should be masked for this role"""
     can_access, should_mask = check_role_access(role, field_tags, config)
     return should_mask
 
@@ -146,7 +146,7 @@ def mask_dataframe_for_display(
         if should_mask_field_with_stars(role, field_tags, config):
             # Replace sensitive values with stars
             masked_df[column] = masked_df[column].apply(lambda x: anonymize_value(x, "star_mask"))
-            masking_indicators[column] = "⭐ Masked"
+            masking_indicators[column] = "Masked"
     
     return masked_df, masking_indicators
 

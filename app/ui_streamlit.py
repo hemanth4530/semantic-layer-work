@@ -25,7 +25,7 @@ st.set_page_config(
     page_title="Solix - Federated Querying with Data Masking", 
     page_icon="⚡",  # Lightning bolt icon as fallback
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Force Light Theme - Override Streamlit's dark theme
@@ -121,12 +121,12 @@ st.markdown("""
     <img src="https://192.168.1.116:3001/static/media/solix-logo-black.abebcfd796dd81ecc2f0.png" 
          alt="Solix Logo" 
          style="height: 15px; margin-right: 12px; object-fit: contain;">
-    <h1 style="color: #2E3440; font-weight: 600; margin: 0; font-size: 1.8rem; line-height: 1.2;">Federated Querying with Data Masking</h1>
+    <h1 style="color: #2E3440; font-weight: 600; margin: 0; font-size: 1.8rem; line-height: 1.2;">Solix Intelligent Data Access-Federated Source</h1>
 </div>
 """, unsafe_allow_html=True)
 
 # Sidebar: Configuration and Role Selection
-st.sidebar.header("Configuration")
+st.sidebar.header("Configured Sources")
 
 # Catalog viewer button instead of text input
 catalog_path = "data/catalog_live.json"  # Fixed path
@@ -142,10 +142,10 @@ st.sidebar.write(f"**Using:** `{catalog_path}`")
 
 
 
-st.sidebar.header("Role & Permissions")
-role = st.sidebar.selectbox(
+st.write("<h4>Role & Permissions</h4>", unsafe_allow_html=True)
+role = st.selectbox(
     "Select User Role", 
-    ["admin", "manager", "employee", "intern"],
+    ["Admin", "Manager", "Employee", "Intern"],
     index=0
 )
 
@@ -159,41 +159,43 @@ try:
     
     if role != "admin":
         permissions = get_role_permissions_summary(role, config)
-        st.sidebar.write(f"**{role.title()} Access:**")
-        st.sidebar.write(f"*{permissions.get('description', '')}*")
+        st.write(f"<b>{role.title()} Access :</b> {permissions.get('description', '')}", unsafe_allow_html=True)
         
         sensitive_tags = set(permissions.get('blocked_tags', []) + permissions.get('anonymize_tags', []))
         
         if sensitive_tags:
-            st.sidebar.write("⭐ **Masked Data:**")
-            st.sidebar.write("*Columns visible, sensitive values shown as stars*")
+            # st.write("**Masked Data:**")
+                        
+            # # Combine descriptions from both blocked and anonymized tags
+            # all_descriptions = permissions.get('blocked_descriptions', []) + permissions.get('anonymize_descriptions', [])
+            # # Remove duplicates while preserving order
+            # seen = set()
+            # unique_descriptions = []
+            # for desc in all_descriptions:
+            #     tag_name = desc.split(':')[0]
+            #     if tag_name not in seen:
+            #         seen.add(tag_name)
+            #         unique_descriptions.append(desc.split(':')[0] + ': ' + desc.split(':')[1].split('(')[0].strip())
             
-            # Combine descriptions from both blocked and anonymized tags
-            all_descriptions = permissions.get('blocked_descriptions', []) + permissions.get('anonymize_descriptions', [])
-            # Remove duplicates while preserving order
-            seen = set()
-            unique_descriptions = []
-            for desc in all_descriptions:
-                tag_name = desc.split(':')[0]
-                if tag_name not in seen:
-                    seen.add(tag_name)
-                    unique_descriptions.append(desc.split(':')[0] + ': ' + desc.split(':')[1].split('(')[0].strip())
-            
-            for desc in unique_descriptions:
-                st.sidebar.write(f"- {desc}")
+            # for desc in unique_descriptions:
+            #     st.write(f"- {desc}")
+            print(f"SENSITIVE TAGS for role {role}: {sensitive_tags}")
+
         else:
-            st.sidebar.write("✅ **Full access to all data**")
+            print(f"No sensitive tags for role {role}")
+            # st.write("**Full access to all data**")
     else:
-        st.sidebar.write("**👑 Administrator - Full Access**")
-        st.sidebar.write("*Can see all data without restrictions*")
+        st.write("**Administrator - Full Access**")
+        st.write("*Can see all data without restrictions*")
 
 except Exception as e:
-    st.sidebar.error(f"Error loading masking config: {e}")
+    st.error(f"Error loading masking config: {e}")
     config = None
     tag_mappings = None
 
 # Main query input
-query = st.text_input("Natural Language Query", "top 3 clients by total invoice amount")
+st.markdown("<h4>Natural Language Query</h4>", unsafe_allow_html=True)
+query = st.text_input("Enter your query", "Show me the details of all the clients, projects, tasks and invoices.")
 
 if st.button("Run"):
     try:
@@ -213,7 +215,7 @@ if st.button("Run"):
             st.markdown(f"**[{db_id}]**")
             st.code(sql, language="sql")
 
-        st.subheader("Results (per DB)")
+        st.subheader("Per-DB Results")
         exec_results=[]
         for item in per:
             db_id = item.get("db_id")
@@ -241,13 +243,13 @@ if st.button("Run"):
                         # Show masking summary
                         summary = get_masking_summary(df.columns.tolist(), masked_df.columns.tolist(), masking_indicators)
                         if summary['star_masked_columns'] > 0:
-                            st.caption(f"⭐ Data Masking Applied: {summary['star_masked_columns']} columns masked with stars")
+                            st.caption(f"Data Masking Applied: {summary['star_masked_columns']} columns masked")
                     
                     st.dataframe(masked_df, use_container_width=True)
                     
                     # Show masking details in expander
                     if masking_indicators:
-                        with st.expander(f"Masking Details for {db_id}"):
+                        with st.expander(f"Masked Columns for {db_id}"):
                             for col, indicator in masking_indicators.items():
                                 st.write(f"**{col}**: {indicator}")
                 else:
@@ -257,7 +259,7 @@ if st.button("Run"):
                 
                 exec_results.append({"db_id":db_id, "columns":res["columns"], "rows":res["rows"]})
 
-        st.subheader("Final Output (LLM-generated SQL over in-memory tables)")
+        st.subheader("Final Output (in-memory tables)")
         per_db_dfs = {}
 
         # Build and sanitize DataFrames for each DB
@@ -309,7 +311,7 @@ if st.button("Run"):
                 masking_indicators = per_db_masking_info[single_db_id]
                 summary = get_masking_summary([], single_df.columns.tolist(), masking_indicators)
                 if summary['star_masked_columns'] > 0:
-                    st.caption(f"⭐ Final Result Masking: {summary['star_masked_columns']} columns masked with stars (Role: {role})")
+                    st.caption(f"Final Result Masking: {summary['star_masked_columns']} columns masked (Role: {role})")
                 
                 with st.expander("Final Result Masking Details"):
                     for col, indicator in masking_indicators.items():
@@ -343,7 +345,7 @@ if st.button("Run"):
             try:
                 final_plan = llm_generate_final_sql(query, per_db_metadata)
                 sql_used = final_plan.get("sql", "")
-                st.markdown("**LLM Final SQL Statement (generated using metadata only):**")
+                st.markdown("**Final SQL Statement:**")
                 st.code(sql_used, language="sql")
 
                 try:
@@ -380,7 +382,7 @@ if st.button("Run"):
                         # Show masking summary from per-DB processing
                         total_masked_columns = sum(len(indicators) for indicators in per_db_masking_info.values())
                         if total_masked_columns > 0:
-                            st.caption(f"⭐ Final Combined Result: Data inherits masking from source databases (Role: {role})")
+                            # st.caption(f"Final Combined Result: Data inherits masking from source databases (Role: {role})")
                             
                             with st.expander("Source Database Masking Details"):
                                 for db_id, indicators in per_db_masking_info.items():
