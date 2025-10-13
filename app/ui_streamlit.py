@@ -4,7 +4,6 @@ import os, json, pathlib, streamlit as st
 from typing import Dict, Any, List
 from dotenv import load_dotenv
 from exec_sql import exec_sql
-from typing import Dict, Any
 from llm_planner import plan, llm_generate_final_sql
 import duckdb, pandas as pd
 from data_masking import (
@@ -22,7 +21,75 @@ def handle_query(nl_query: str, catalog_by_db: Dict[str, Any]) -> Dict[str, Any]
 
 
 
-st.set_page_config(page_title="Semantic Layer (LLM-only)", layout="wide")
+st.set_page_config(
+    page_title="Solix - Federated Querying with Data Masking", 
+    page_icon="⚡",  # Lightning bolt icon as fallback
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Force Light Theme - Override Streamlit's dark theme
+st.markdown("""
+<style>
+    /* Only use CSS selectors that actually work */
+    
+    /* Button styling - this definitely works */
+    .stButton > button {
+        background-color: #007BFF !important;
+        color: #FFFFFF !important;
+        border: none;
+        border-radius: 4px;
+        font-weight: 500;
+    }
+    
+    .stButton > button:hover {
+        background-color: #0056B3 !important;
+    }
+    
+    /* Text input styling - this works */
+    .stTextInput > div > div > input {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+        border: 1px solid #CED4DA !important;
+    }
+    
+    /* Selectbox styling - this works */
+    .stSelectbox > div > div {
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
+    }
+
+</style>
+""", unsafe_allow_html=True)
+
+# Custom favicon injection
+st.markdown("""
+<script>
+    // Function to update favicon
+    function updateFavicon() {
+        // Remove existing favicon
+        var existingFavicon = document.querySelector("link[rel*='icon']");
+        if (existingFavicon) {
+            existingFavicon.remove();
+        }
+        
+        // Create new favicon matching your exact red lightning bolt image
+        var newFavicon = document.createElement('link');
+        newFavicon.rel = 'icon';
+        newFavicon.type = 'image/svg+xml';
+        newFavicon.href = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTYiIGZpbGw9IiNEQzM1NDUiLz4KPHN2ZyB4PSI5IiB5PSI3IiB3aWR0aD0iMTQiIGhlaWdodD0iMTgiIHZpZXdCb3g9IjAgMCAxNCAxOCIgZmlsbD0ibm9uZSI+CjxwYXRoIGQ9Ik03LjUgMEwyIDlINS41TDUgMThMMTAuNSA5SDdMNy41IDBaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4KPC9zdmc+';
+        
+        // Add to head
+        document.head.appendChild(newFavicon);
+    }
+    
+    // Update favicon when page loads
+    document.addEventListener('DOMContentLoaded', updateFavicon);
+    
+    // Also update after a short delay to ensure it takes effect
+    setTimeout(updateFavicon, 1000);
+</script>
+""", unsafe_allow_html=True)
 
 def load_json(fp: str) -> Dict[str, Any]:
     p = pathlib.Path(fp)
@@ -48,7 +115,15 @@ def load_dsns(fp: str="dsns.json") -> Dict[str, str]:
 
 
 
-st.title("Semantic Layer with Data Masking")
+# Header with logo and title - absolute top positioning
+st.markdown("""
+<div style="display: flex; align-items: center; margin: -2rem 0 1rem 0; padding: 0.3rem 0 0.8rem 0; border-bottom: 2px solid #E5E7EB; position: relative; top: -10px;">
+    <img src="https://192.168.1.116:3001/static/media/solix-logo-black.abebcfd796dd81ecc2f0.png" 
+         alt="Solix Logo" 
+         style="height: 15px; margin-right: 12px; object-fit: contain;">
+    <h1 style="color: #2E3440; font-weight: 600; margin: 0; font-size: 1.8rem; line-height: 1.2;">Federated Querying with Data Masking</h1>
+</div>
+""", unsafe_allow_html=True)
 
 # Sidebar: Configuration and Role Selection
 st.sidebar.header("Configuration")

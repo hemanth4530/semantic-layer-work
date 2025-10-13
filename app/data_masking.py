@@ -182,35 +182,6 @@ def get_role_permissions_summary(role: str, config: Dict[str, Any]) -> Dict[str,
         "allowed_exceptions": role_config.get("allowed_exceptions", [])
     }
 
-def mask_multiple_dataframes(
-    dataframes: Dict[str, pd.DataFrame],
-    role: str,
-    tag_mappings: Dict[str, Any],
-    config: Dict[str, Any],
-    db_table_mapping: Optional[Dict[str, Tuple[str, str]]] = None
-) -> Dict[str, Tuple[pd.DataFrame, Dict[str, str]]]:
-    """
-    Mask multiple dataframes (useful for per-DB results)
-    db_table_mapping: dict mapping df_key to (db_id, table_name)
-    """
-    results = {}
-    
-    for df_key, df in dataframes.items():
-        db_id = None
-        table_name = None
-        
-        if db_table_mapping and df_key in db_table_mapping:
-            db_id, table_name = db_table_mapping[df_key]
-        else:
-            # Try to use df_key as db_id
-            db_id = df_key
-        
-        masked_df, indicators = mask_dataframe_for_display(
-            df, db_id, table_name, role, tag_mappings, config
-        )
-        results[df_key] = (masked_df, indicators)
-    
-    return results
 
 def get_masking_summary(
     original_columns: List[str],

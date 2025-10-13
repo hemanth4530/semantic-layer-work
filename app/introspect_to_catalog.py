@@ -2,9 +2,9 @@
 
 import json, sys, os
 from sqlalchemy import create_engine, text
-from dotenv import load_dotenv
+from app.tag_loader import load_masking_config, load_json_with_encoding
 
-load_dotenv()
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -42,34 +42,63 @@ def main():
         except Exception as e:
             catalog[db_id] = {"db_id": db_id, "error": str(e), "tables": {}}
     
-    # write to stdout; caller can redirect
+    # Save catalog to file first
+    with open("data/catalog_live.json", "w", encoding="utf-8") as f:
+        json.dump(catalog, f, indent=2, ensure_ascii=False)
+    print("Basic catalog saved to data/catalog_live.json", file=sys.stderr)
+    
+    # Enhance with descriptions and generate tag mappings
+    enhance_catalog_with_descriptions()
+    generate_field_tag_mappings()
+    
+    # Also write to stdout for backward compatibility
     catalog_json = json.dumps(catalog, ensure_ascii=False, indent=2)
     sys.stdout.write(catalog_json)
-    
-    # Auto-generate field tag mappings after catalog creation
-    # Only if output is being redirected to data/catalog_live.json
-    if len(sys.argv) > 1 and "catalog_live.json" in " ".join(sys.argv):
-        try_auto_generate_field_tags()
 
-def try_auto_generate_field_tags():
-    """Attempt to auto-generate field tag mappings after catalog update"""
+
+def enhance_catalog_with_descriptions():
+    """Add AI-generated field descriptions to catalog_live.json"""
     try:
-        import os
-        # Check if we should auto-generate (catalog exists and has API key)
-        if os.path.exists("data/catalog_live.json") and os.getenv("OPENAI_API_KEY"):
-            print("🤖 Auto-generating field tag mappings...", file=sys.stderr)
+        if not os.path.exists("data/catalog_live.json"):
+            print("Catalog file not found, skipping description enhancement", file=sys.stderr)
+            return
             
-            from auto_tag_generator import auto_generate_field_tag_mappings
-            auto_generate_field_tag_mappings(
-                catalog_file="data/catalog_live.json",
-                force_regenerate=True
-            )
-            print("✅ Field tag mappings updated!", file=sys.stderr)
-        else:
-            if not os.getenv("OPENAI_API_KEY"):
-                print("💡 Set OPENAI_API_KEY to enable auto field tag generation", file=sys.stderr)
+        if not os.getenv("OPENAI_API_KEY"):
+            print("Set OPENAI_API_KEY to enable field description generation", file=sys.stderr)
+            return
+            
+        print("Adding field descriptions to catalog...", file=sys.stderr)
+        from app.field_descriptor import add_field_descriptions_to_catalog
+        add_field_descriptions_to_catalog(
+            catalog_file="data/catalog_live.json",
+            force_regenerate=True
+        )
+        print("Field descriptions added to catalog!", file=sys.stderr)
     except Exception as e:
-        print(f"⚠️  Auto field tag generation failed: {e}", file=sys.stderr)
+        print(f"Field description enhancement failed: {e}", file=sys.stderr)
+
+def generate_field_tag_mappings():
+    """Generate field tag mappings from enhanced catalog"""
+    try:
+        if not os.path.exists("data/catalog_live.json"):
+            print("Catalog file not found, skipping tag mapping generation", file=sys.stderr)
+            return
+            
+        if not os.getenv("OPENAI_API_KEY"):
+            print("Set OPENAI_API_KEY to enable field tag mapping generation", file=sys.stderr)
+            return
+            
+        print("Auto-generating field tag mappings...", file=sys.stderr)
+        
+        from app.auto_tag_generator import auto_generate_field_tag_mappings
+        auto_generate_field_tag_mappings(
+            catalog_file="data/catalog_live.json",
+            output_file="data/field_tag_mappings.json",
+            force_regenerate=True
+        )
+        print("Field tag mappings generated!", file=sys.stderr)
+    except Exception as e:
+        print(f"Field tag mapping generation failed: {e}", file=sys.stderr)
 
 if __name__ == "__main__":
     main()

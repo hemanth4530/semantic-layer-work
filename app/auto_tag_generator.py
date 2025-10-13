@@ -4,7 +4,7 @@ import json
 import requests
 from typing import Dict, Any, List
 from dotenv import load_dotenv
-from tag_loader import load_masking_config, load_json_with_encoding
+from app.tag_loader import load_masking_config, load_json_with_encoding
 
 # Load environment variables from .env file
 load_dotenv()
@@ -132,7 +132,7 @@ def call_llm_for_classification(prompt: str) -> Dict[str, Any]:
         "max_tokens": 4000
     }
     
-    print("🤖 Calling LLM for field classification...")
+    print("LLM: Calling LLM for field classification...")
     response = requests.post(endpoint, headers=headers, json=payload, timeout=60)
     response.raise_for_status()
     
@@ -142,7 +142,7 @@ def call_llm_for_classification(prompt: str) -> Dict[str, Any]:
     try:
         return json.loads(content)
     except json.JSONDecodeError as e:
-        print(f"❌ LLM returned invalid JSON: {content}")
+        print(f"ERROR: LLM returned invalid JSON: {content}")
         raise ValueError(f"LLM returned invalid JSON: {e}")
 
 def validate_generated_mappings(mappings: Dict[str, Any], config: Dict[str, Any]) -> List[str]:
@@ -189,12 +189,12 @@ def auto_generate_field_tag_mappings(
     
     # Check if output already exists
     if not force_regenerate and os.path.exists(output_file):
-        print(f"📋 {output_file} already exists. Use force_regenerate=True to overwrite.")
+        print(f"INFO: {output_file} already exists. Use force_regenerate=True to overwrite.")
         return load_json_with_encoding(output_file)
     
-    print(f"🚀 Starting auto-generation of field tag mappings...")
-    print(f"📖 Reading catalog from: {catalog_file}")
-    print(f"⚙️  Reading config from: {config_file}")
+    print(f"STARTING: Auto-generation of field tag mappings...")
+    print(f"READING: Catalog from: {catalog_file}")
+    print(f"CONFIG: Reading config from: {config_file}")
     
     # Load input files
     try:
@@ -222,7 +222,7 @@ def auto_generate_field_tag_mappings(
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(generated_mappings, f, indent=2, ensure_ascii=False)
-        print(f"✅ Generated field tag mappings saved to: {output_file}")
+        print(f"SUCCESS: Generated field tag mappings saved to: {output_file}")
     except Exception as e:
         raise RuntimeError(f"Failed to save mappings: {e}")
     
@@ -233,7 +233,7 @@ def auto_generate_field_tag_mappings(
         for table_data in generated_mappings.get("table_mappings", {}).values()
     )
     
-    print(f"📊 Generation Summary:")
+    print(f"SUMMARY: Generation Summary:")
     print(f"   - Tables processed: {table_count}")
     print(f"   - Columns classified: {total_columns}")
     print(f"   - Available tags: {len(config.get('tag_definitions', {}))}")
@@ -259,10 +259,10 @@ def regenerate_mappings_cli():
             output_file=args.output,
             force_regenerate=args.force
         )
-        print("🎉 Auto-generation completed successfully!")
+        print("COMPLETED: Auto-generation completed successfully!")
         return mappings
     except Exception as e:
-        print(f"❌ Auto-generation failed: {e}")
+        print(f"ERROR: Auto-generation failed: {e}")
         return None
 
 if __name__ == "__main__":

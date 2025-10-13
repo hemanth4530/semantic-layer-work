@@ -5,4 +5,4 @@ policies/policy.yml
 __pycache__/
 *.log
 *.pyc
-field_tag_mappings.json
+data/*
