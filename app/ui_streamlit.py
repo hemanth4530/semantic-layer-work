@@ -28,10 +28,29 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Force Light Theme - Override Streamlit's dark theme
+# Force Light Theme and Navigation Bar CSS
 st.markdown("""
 <style>
-    /* Only use CSS selectors that actually work */
+    /* Remove default Streamlit padding for navigation bar */
+    .main .block-container {
+        padding-top: 0rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        max-width: none !important;
+    }
+    
+    /* Navigation bar container */
+    .nav-container {
+        width: calc(100% + 2rem);
+        margin-left: -1rem;
+        margin-right: -1rem;
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-bottom: 3px solid #007BFF;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        padding: 1rem 2rem;
+        margin-bottom: 1.5rem;
+        position: relative;
+    }
     
     /* Button styling - this definitely works */
     .stButton > button {
@@ -115,13 +134,56 @@ def load_dsns(fp: str="dsns.json") -> Dict[str, str]:
 
 
 
-# Header with logo and title - absolute top positioning
+# Navigation Bar with Logo
 st.markdown("""
-<div style="display: flex; align-items: center; margin: -2rem 0 1rem 0; padding: 0.3rem 0 0.8rem 0; border-bottom: 2px solid #E5E7EB; position: relative; top: -10px;">
-    <img src="https://192.168.1.116:3001/static/media/solix-logo-black.abebcfd796dd81ecc2f0.png" 
-         alt="Solix Logo" 
-         style="height: 15px; margin-right: 12px; object-fit: contain;">
-    <h1 style="color: #2E3440; font-weight: 600; margin: 0; font-size: 1.8rem; line-height: 1.2;">Solix Intelligent Data Access-Federated Source</h1>
+<div class="nav-container">
+    <div style="
+        display: flex; 
+        align-items: center; 
+        justify-content: space-between;
+        width: 100%;
+        max-width: 1200px;
+        margin: 0 auto;
+    ">
+        <div style="display: flex; align-items: center; flex: 1;">
+            <img src="https://192.168.1.116:3001/static/media/solix-logo-black.abebcfd796dd81ecc2f0.png" 
+                 alt="Solix Logo" 
+                 style="height: 32px; margin-right: 15px; object-fit: contain; flex-shrink: 0;">
+            <div style="min-width: 0;">
+                <h1 style="
+                    color: #2E3440; 
+                    font-weight: 600; 
+                    margin: 0; 
+                    font-size: 1.5rem; 
+                    line-height: 1.2;
+                    white-space: nowrap;
+                ">Solix Intelligent Data Access</h1>
+                <p style="
+                    color: #6c757d; 
+                    margin: 0; 
+                    font-size: 0.9rem;
+                    font-weight: 400;
+                    white-space: nowrap;
+                ">Federated Querying with Data Masking</p>
+            </div>
+        </div>
+        <div style="
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+            flex-shrink: 0;
+        ">
+            <span style="
+                background: #007BFF; 
+                color: white; 
+                padding: 0.4rem 1rem; 
+                border-radius: 20px; 
+                font-size: 0.8rem;
+                font-weight: 500;
+                white-space: nowrap;
+            ">Enterprise AI Governance</span>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
